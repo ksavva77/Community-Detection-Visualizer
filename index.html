@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Community Detection Visualizer documentation &#8212; Community Detection Visualizer Fall 2026 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=76987652"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="community-detection-visualizer-documentation">
+<h1>Community Detection Visualizer documentation<a class="headerlink" href="#community-detection-visualizer-documentation" title="Link to this heading">¶</a></h1>
+<p>This project finds and draws communities (tightly knit groups) in
+real-world networks. It compares a from-scratch Girvan–Newman
+implementation with the Louvain method on three datasets: Zachary’s
+Karate Club, the Dolphin Social Network, and a Facebook ego network from
+Stanford SNAP.</p>
+<p>Source code: <a class="reference external" href="https://github.com/ksavva77/Community-Detection-Visualizer">https://github.com/ksavva77/Community-Detection-Visualizer</a></p>
+<p>Run everything with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/main.py</span></code>.</p>
+<section id="module-girvan_newman">
+<span id="girvannewman-from-scratch"></span><h2>Girvan–Newman (from scratch)<a class="headerlink" href="#module-girvan_newman" title="Link to this heading">¶</a></h2>
+<p>Girvan–Newman community detection, implemented from scratch.</p>
+<p>The Girvan–Newman algorithm finds communities by <em>removing</em> edges rather
+than grouping nodes. Edges that connect two communities carry many
+shortest paths between them (high <em>edge betweenness</em>), so removing them
+one at a time slowly splits the graph apart:</p>
+<ol class="arabic simple">
+<li><p>Compute the edge betweenness of every edge.</p></li>
+<li><p>Remove the edge with the highest betweenness.</p></li>
+<li><p>Recompute betweenness and repeat until no edges are left.</p></li>
+</ol>
+<p>Each time the graph splits into more pieces, the pieces form a candidate
+partition. The partition with the highest <em>modularity</em> (Q) is returned
+as the answer.</p>
+<p>Everything in this module (breadth-first search, connected components,
+Brandes’ edge-betweenness algorithm and modularity) is written with plain
+Python data structures. NetworkX is used only to read the input graph.
+The one speed-up: after an edge is removed, betweenness is recomputed
+only for the component that contained it, because shortest paths in every
+other component are unchanged.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.to_adjacency">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">to_adjacency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.to_adjacency" title="Link to this definition">¶</a></dt>
+<dd><p>Convert a graph into a plain adjacency dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>graph</strong> (<em>networkx.Graph</em><em> or </em><em>dict</em>) – An undirected NetworkX graph, or a dictionary that maps each node
+to an iterable of its neighbors.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Maps every node to the set of its neighbors. Self-loops are
+dropped.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict of node to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.edge_key">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">edge_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.edge_key" title="Link to this definition">¶</a></dt>
+<dd><p>Return one fixed key for the undirected edge between <code class="docutils literal notranslate"><span class="pre">u</span></code> and <code class="docutils literal notranslate"><span class="pre">v</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>u</strong> (<em>hashable</em>) – The two endpoints.</p></li>
+<li><p><strong>v</strong> (<em>hashable</em>) – The two endpoints.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(u,</span> <span class="pre">v)</span></code> or <code class="docutils literal notranslate"><span class="pre">(v,</span> <span class="pre">u)</span></code>, always in the same order, so the edge has
+one key no matter which way round it is given.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.count_edges">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">count_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adjacency</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.count_edges" title="Link to this definition">¶</a></dt>
+<dd><p>Count the undirected edges in an adjacency dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>adjacency</strong> (<em>dict</em><em> of </em><em>node to set</em>) – Adjacency dictionary, as built by <a class="reference internal" href="#girvan_newman.to_adjacency" title="girvan_newman.to_adjacency"><code class="xref py py-func docutils literal notranslate"><span class="pre">to_adjacency()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The number of edges.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.bfs_component">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">bfs_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adjacency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.bfs_component" title="Link to this definition">¶</a></dt>
+<dd><p>Find every node reachable from <code class="docutils literal notranslate"><span class="pre">start</span></code> with breadth-first search.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adjacency</strong> (<em>dict</em><em> of </em><em>node to set</em>) – Adjacency dictionary.</p></li>
+<li><p><strong>start</strong> (<em>hashable</em>) – Node to start the search from.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>All nodes in the same connected component as <code class="docutils literal notranslate"><span class="pre">start</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.connected_components">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">connected_components</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adjacency</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.connected_components" title="Link to this definition">¶</a></dt>
+<dd><p>Split a graph into its connected components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>adjacency</strong> (<em>dict</em><em> of </em><em>node to set</em>) – Adjacency dictionary.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One set of nodes per component. Components are sorted largest
+first, so the result is the same on every run.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.edge_betweenness">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">edge_betweenness</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adjacency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.edge_betweenness" title="Link to this definition">¶</a></dt>
+<dd><p>Compute edge betweenness with Brandes’ algorithm.</p>
+<p>The edge betweenness of an edge is the number of shortest paths,
+between all pairs of nodes, that pass through it. When there are
+several equally short paths between two nodes, each one counts as a
+fraction. For an unweighted graph, Brandes’ algorithm runs one
+breadth-first search per source node, in O(nm) time overall.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adjacency</strong> (<em>dict</em><em> of </em><em>node to set</em>) – Adjacency dictionary.</p></li>
+<li><p><strong>nodes</strong> (<em>iterable</em><em>, </em><em>optional</em>) – Only use these nodes as sources. Pass one connected component to
+score just that component’s edges. Defaults to every node.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Maps each edge key (see <a class="reference internal" href="#girvan_newman.edge_key" title="girvan_newman.edge_key"><code class="xref py py-func docutils literal notranslate"><span class="pre">edge_key()</span></code></a>) to its betweenness. Each
+unordered pair of nodes is counted once.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict of tuple to float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.modularity">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">modularity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adjacency</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">communities</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.modularity" title="Link to this definition">¶</a></dt>
+<dd><p>Compute the modularity (Q) of a partition, from scratch.</p>
+<p>Modularity compares the number of edges inside each community with
+the number expected if the edges were placed at random:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Q</span> <span class="o">=</span> <span class="nb">sum</span> <span class="n">over</span> <span class="n">communities</span> <span class="n">c</span> <span class="n">of</span> <span class="p">[</span> <span class="n">L_c</span> <span class="o">/</span> <span class="n">m</span>  <span class="o">-</span>  <span class="p">(</span><span class="n">d_c</span> <span class="o">/</span> <span class="mi">2</span><span class="n">m</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">m</span></code> is the total number of edges, <code class="docutils literal notranslate"><span class="pre">L_c</span></code> is the number of
+edges inside community <code class="docutils literal notranslate"><span class="pre">c</span></code>, and <code class="docutils literal notranslate"><span class="pre">d_c</span></code> is the sum of the degrees of
+its nodes. Q is close to 0 for a random split. Values above about 0.3
+mean the graph has clear community structure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>adjacency</strong> (<em>dict</em><em> of </em><em>node to set</em>) – Adjacency dictionary of the <em>original</em> graph (before any edges
+were removed).</p></li>
+<li><p><strong>communities</strong> (<em>iterable</em><em> of </em><em>set</em>) – The partition: every node in exactly one set.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modularity, between -0.5 and 1.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">GirvanNewmanResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">levels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">removed_edges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modularity_history</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runtime</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The result of one Girvan–Newman run.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>levels</strong> (<em>list</em><em> of </em><em>dict</em>) – One entry each time the graph split into more pieces. Each entry
+has <code class="docutils literal notranslate"><span class="pre">&quot;edges_removed&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;communities&quot;</span></code> (a list of sets) and
+<code class="docutils literal notranslate"><span class="pre">&quot;modularity&quot;</span></code>.</p></li>
+<li><p><strong>removed_edges</strong> (<em>list</em><em> of </em><em>tuple</em>) – Every removed edge, in order, as <code class="docutils literal notranslate"><span class="pre">(u,</span> <span class="pre">v,</span> <span class="pre">betweenness)</span></code>.</p></li>
+<li><p><strong>modularity_history</strong> (<em>list</em><em> of </em><em>float</em>) – Modularity after each edge removal. Index 0 is the original graph.</p></li>
+<li><p><strong>runtime</strong> (<em>float</em>) – Wall-clock time of the run, in seconds.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.levels">
+<span class="sig-name descname"><span class="pre">levels</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.levels" title="Link to this definition">¶</a></dt>
+<dd><p>See the parameter above.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.removed_edges">
+<span class="sig-name descname"><span class="pre">removed_edges</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.removed_edges" title="Link to this definition">¶</a></dt>
+<dd><p>See the parameter above.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.modularity_history">
+<span class="sig-name descname"><span class="pre">modularity_history</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.modularity_history" title="Link to this definition">¶</a></dt>
+<dd><p>See the parameter above.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.runtime">
+<span class="sig-name descname"><span class="pre">runtime</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.runtime" title="Link to this definition">¶</a></dt>
+<dd><p>See the parameter above.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.best">
+<span class="sig-name descname"><span class="pre">best</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.best" title="Link to this definition">¶</a></dt>
+<dd><p>The level with the highest modularity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.communities">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">communities</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.communities" title="Link to this definition">¶</a></dt>
+<dd><p>the communities of the best (highest-Q) partition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.best_modularity">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">best_modularity</span></span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.best_modularity" title="Link to this definition">¶</a></dt>
+<dd><p>the highest modularity found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.partition_with">
+<span class="sig-name descname"><span class="pre">partition_with</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.partition_with" title="Link to this definition">¶</a></dt>
+<dd><p>Return the first partition that has at least <code class="docutils literal notranslate"><span class="pre">k</span></code> communities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>k</strong> (<em>int</em>) – The number of communities wanted.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The communities, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if the graph never split that far.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of set or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="girvan_newman.GirvanNewmanResult.bridge_edges">
+<span class="sig-name descname"><span class="pre">bridge_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.GirvanNewmanResult.bridge_edges" title="Link to this definition">¶</a></dt>
+<dd><p>Return the first edges whose removal split the graph.</p>
+<p>These are the “bridges” between communities: the removed edges
+that each increased the number of components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>count</strong> (<em>int</em><em>, </em><em>optional</em>) – How many bridges to return. Defaults to 3.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Up to <code class="docutils literal notranslate"><span class="pre">count</span></code> edges as <code class="docutils literal notranslate"><span class="pre">(u,</span> <span class="pre">v)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="girvan_newman.girvan_newman">
+<span class="sig-prename descclassname"><span class="pre">girvan_newman.</span></span><span class="sig-name descname"><span class="pre">girvan_newman</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#girvan_newman.girvan_newman" title="Link to this definition">¶</a></dt>
+<dd><p>Run the Girvan–Newman algorithm until every edge has been removed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em><em> or </em><em>dict</em>) – Undirected, unweighted graph, as a NetworkX graph or an adjacency
+dictionary.</p></li>
+<li><p><strong>progress</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, print a line each time the graph splits. Defaults to
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Every partition found, the order edges were removed, the
+modularity after each removal, and the runtime. The answer is
+<code class="docutils literal notranslate"><span class="pre">result.communities</span></code>, the partition with the highest modularity.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#girvan_newman.GirvanNewmanResult" title="girvan_newman.GirvanNewmanResult">GirvanNewmanResult</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Ties between edges with the same betweenness are broken by edge key,
+so the result is the same on every run.</p>
+</dd></dl>
+
+</section>
+<section id="module-community_detection">
+<span id="datasets-and-raw-graphs"></span><h2>Datasets and raw graphs<a class="headerlink" href="#module-community_detection" title="Link to this heading">¶</a></h2>
+<p>Community Detection Visualizer: dataset loading and raw-graph visualization.</p>
+<p>This module is the first milestone of the CSCI 310 final project
+<em>Community Detection and Visualization in Real-World Networks</em>. It loads
+three real-world networks, prints a summary table of their basic
+properties, and draws each network before any community detection is
+run, so the later results have a baseline to compare against.</p>
+<p>The three datasets are:</p>
+<ul class="simple">
+<li><p><strong>Zachary’s Karate Club</strong>, built into NetworkX (34 nodes, 78 edges).</p></li>
+<li><p><strong>Dolphin Social Network</strong>, from the Network Repository (62 nodes,
+159 edges).</p></li>
+<li><p><strong>Facebook ego network</strong>, one person’s friend circle taken from the
+Stanford SNAP <code class="docutils literal notranslate"><span class="pre">ego-Facebook</span></code> dataset.</p></li>
+</ul>
+<p>The dolphin and Facebook files are downloaded the first time they are
+needed and kept in the <code class="docutils literal notranslate"><span class="pre">data/</span></code> folder, so later runs work offline.</p>
+<p>Run the module from the repository root:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">src</span><span class="o">/</span><span class="n">community_detection</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<dl class="py data">
+<dt class="sig sig-object py" id="community_detection.ROOT_DIR">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">ROOT_DIR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer'</span></span><a class="headerlink" href="#community_detection.ROOT_DIR" title="Link to this definition">¶</a></dt>
+<dd><p>Repository root folder (the folder above <code class="docutils literal notranslate"><span class="pre">src/</span></code>).</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="community_detection.DATA_DIR">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">DATA_DIR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/data'</span></span><a class="headerlink" href="#community_detection.DATA_DIR" title="Link to this definition">¶</a></dt>
+<dd><p>Folder where downloaded datasets are stored.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="community_detection.OUTPUT_DIR">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">OUTPUT_DIR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/output'</span></span><a class="headerlink" href="#community_detection.OUTPUT_DIR" title="Link to this definition">¶</a></dt>
+<dd><p>Folder where generated images are saved.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="community_detection.DOLPHINS_URL">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">DOLPHINS_URL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'https://nrvis.com/download/data/soc/soc-dolphins.zip'</span></span><a class="headerlink" href="#community_detection.DOLPHINS_URL" title="Link to this definition">¶</a></dt>
+<dd><p>Download link for the Dolphin Social Network (Network Repository).</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="community_detection.FACEBOOK_URL">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">FACEBOOK_URL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'https://snap.stanford.edu/data/facebook_combined.txt.gz'</span></span><a class="headerlink" href="#community_detection.FACEBOOK_URL" title="Link to this definition">¶</a></dt>
+<dd><p>Download link for the combined SNAP Facebook graph.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="community_detection.DEFAULT_EGO_NODE">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_EGO_NODE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">414</span></span><a class="headerlink" href="#community_detection.DEFAULT_EGO_NODE" title="Link to this definition">¶</a></dt>
+<dd><p>Default ego node for the Facebook subgraph. Its friend circle has
+160 nodes and 1,857 edges: big enough to test scaling, but small
+enough for Girvan-Newman to finish.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.download_dataset">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">download_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.download_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>Download a dataset file unless a copy is already saved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>url</strong> (<em>str</em>) – Web address of the file to download.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – Name to save the file under inside <code class="docutils literal notranslate"><span class="pre">data_dir</span></code>.</p></li>
+<li><p><strong>data_dir</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder for downloaded data. Defaults to <a class="reference internal" href="#community_detection.DATA_DIR" title="community_detection.DATA_DIR"><code class="xref py py-data docutils literal notranslate"><span class="pre">DATA_DIR</span></code></a>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Full path to the saved file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.load_karate_club">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">load_karate_club</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.load_karate_club" title="Link to this definition">¶</a></dt>
+<dd><p>Load Zachary’s Karate Club network.</p>
+<p>Each node has a <code class="docutils literal notranslate"><span class="pre">club</span></code> attribute (<code class="docutils literal notranslate"><span class="pre">&quot;Mr.</span> <span class="pre">Hi&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;Officer&quot;</span></code>)
+recording which side the member joined after the club split. This
+real split is the ground truth used later to measure how accurate
+the detected communities are.</p>
+<p>NetworkX stores a <code class="docutils literal notranslate"><span class="pre">weight</span></code> on each edge (how many activities two
+members shared). The weights are removed so that every dataset is
+treated as unweighted, the same way Girvan–Newman treats it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Unweighted undirected graph with 34 nodes and 78 edges.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.load_dolphins">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">load_dolphins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.load_dolphins" title="Link to this definition">¶</a></dt>
+<dd><p>Load the Dolphin Social Network from the Network Repository.</p>
+<p>The file is in Matrix Market (<code class="docutils literal notranslate"><span class="pre">.mtx</span></code>) format inside a zip file. The
+nodes are renumbered from 0 so they match the other datasets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data_dir</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder for downloaded data. Defaults to <a class="reference internal" href="#community_detection.DATA_DIR" title="community_detection.DATA_DIR"><code class="xref py py-data docutils literal notranslate"><span class="pre">DATA_DIR</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Undirected graph with 62 nodes (dolphins) and 159 edges (frequent
+associations).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.load_facebook_full">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">load_facebook_full</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.load_facebook_full" title="Link to this definition">¶</a></dt>
+<dd><p>Load the whole SNAP Facebook graph (all ten ego networks combined).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data_dir</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder for downloaded data. Defaults to <a class="reference internal" href="#community_detection.DATA_DIR" title="community_detection.DATA_DIR"><code class="xref py py-data docutils literal notranslate"><span class="pre">DATA_DIR</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Undirected graph with 4,039 nodes and 88,234 edges.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.load_facebook_ego">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">load_facebook_ego</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ego_node</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">414</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.load_facebook_ego" title="Link to this definition">¶</a></dt>
+<dd><p>Load one person’s Facebook friend circle (an ego network).</p>
+<p>The full Facebook graph is too large for Girvan-Newman, which takes
+roughly O(m^2 n) time, so the project works with one ego network: the
+chosen person, all of their friends, and the friendships among them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_node</strong> (<em>int</em><em>, </em><em>optional</em>) – ID of the person at the center. The SNAP ego nodes are 0, 107,
+348, 414, 686, 698, 1684, 1912, 3437 and 3980. Defaults to
+<a class="reference internal" href="#community_detection.DEFAULT_EGO_NODE" title="community_detection.DEFAULT_EGO_NODE"><code class="xref py py-data docutils literal notranslate"><span class="pre">DEFAULT_EGO_NODE</span></code></a>.</p></li>
+<li><p><strong>data_dir</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder for downloaded data. Defaults to <a class="reference internal" href="#community_detection.DATA_DIR" title="community_detection.DATA_DIR"><code class="xref py py-data docutils literal notranslate"><span class="pre">DATA_DIR</span></code></a>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The ego network, relabeled with nodes numbered from 0.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>networkx.Graph</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">ego_node</span></code> is not in the Facebook graph.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.load_all_datasets">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">load_all_datasets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ego_node</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">414</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/Community-Detection-Visualizer/Community-Detection-Visualizer/data'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.load_all_datasets" title="Link to this definition">¶</a></dt>
+<dd><p>Load all three project datasets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_node</strong> (<em>int</em><em>, </em><em>optional</em>) – Ego node for the Facebook subgraph. Defaults to
+<a class="reference internal" href="#community_detection.DEFAULT_EGO_NODE" title="community_detection.DEFAULT_EGO_NODE"><code class="xref py py-data docutils literal notranslate"><span class="pre">DEFAULT_EGO_NODE</span></code></a>.</p></li>
+<li><p><strong>data_dir</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder for downloaded data. Defaults to <a class="reference internal" href="#community_detection.DATA_DIR" title="community_detection.DATA_DIR"><code class="xref py py-data docutils literal notranslate"><span class="pre">DATA_DIR</span></code></a>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Maps each dataset’s display name to its graph, in order from
+smallest to largest.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict of str to networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.graph_summary">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">graph_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.graph_summary" title="Link to this definition">¶</a></dt>
+<dd><p>Compute basic statistics for one graph.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The graph to describe.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Display name of the dataset.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The dataset name, node count, edge count, average degree, density,
+number of connected components and average clustering coefficient.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.summary_table">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">summary_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">datasets</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.summary_table" title="Link to this definition">¶</a></dt>
+<dd><p>Build a summary table for several graphs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>datasets</strong> (<em>dict</em><em> of </em><em>str to networkx.Graph</em>) – Dataset names mapped to their graphs, as returned by
+<a class="reference internal" href="#community_detection.load_all_datasets" title="community_detection.load_all_datasets"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_all_datasets()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One row per dataset, with the columns from <a class="reference internal" href="#community_detection.graph_summary" title="community_detection.graph_summary"><code class="xref py py-func docutils literal notranslate"><span class="pre">graph_summary()</span></code></a>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.draw_raw_graph">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">draw_raw_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.draw_raw_graph" title="Link to this definition">¶</a></dt>
+<dd><p>Draw one graph before any communities are detected.</p>
+<p>All nodes are the same color. Node size grows with degree (scaled to
+the graph’s highest degree, so dense graphs stay readable), so
+well-connected nodes stand out.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The graph to draw.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Title shown above the drawing.</p></li>
+<li><p><strong>ax</strong> (<em>matplotlib.axes.Axes</em>) – The axes to draw on.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for the spring layout, so the picture is the same on
+every run. Defaults to 42.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Node positions from the spring layout, so later plots of the same
+graph can reuse them for side-by-side comparison.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.plot_raw_graphs">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">plot_raw_graphs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">datasets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.plot_raw_graphs" title="Link to this definition">¶</a></dt>
+<dd><p>Save a side-by-side image of every raw (unclustered) graph.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>datasets</strong> (<em>dict</em><em> of </em><em>str to networkx.Graph</em>) – Dataset names mapped to their graphs.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – File path for the PNG image.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for the spring layouts. Defaults to 42.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The path the image was saved to.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.plot_karate_ground_truth">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">plot_karate_ground_truth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.plot_karate_ground_truth" title="Link to this definition">¶</a></dt>
+<dd><p>Save the Karate Club network colored by the real club split.</p>
+<p>This is the known correct answer the detected communities will be
+compared with in the next milestone.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The Karate Club graph from <a class="reference internal" href="#community_detection.load_karate_club" title="community_detection.load_karate_club"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_karate_club()</span></code></a>.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – File path for the PNG image.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for the spring layout. Defaults to 42.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The path the image was saved to.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="community_detection.main">
+<span class="sig-prename descclassname"><span class="pre">community_detection.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#community_detection.main" title="Link to this definition">¶</a></dt>
+<dd><p>Load every dataset, print the summary table and save the images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The summary table that was printed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-comparison">
+<span id="comparison-and-visualization"></span><h2>Comparison and visualization<a class="headerlink" href="#module-comparison" title="Link to this heading">¶</a></h2>
+<p>Compare Girvan–Newman with Louvain and draw the results.</p>
+<p>This module runs both algorithms on every dataset and produces the
+project’s outputs:</p>
+<ul class="simple">
+<li><p>a console table of communities, modularity (Q), runtime and the top
+bridge edges for each dataset;</p></li>
+<li><p>color-coded community drawings next to the raw graph;</p></li>
+<li><p>modularity curves showing how Q changes as Girvan–Newman removes edges;</p></li>
+<li><p>a runtime-scaling chart across several Facebook ego networks;</p></li>
+<li><p>an accuracy check on the Karate Club against the club’s real split.</p></li>
+</ul>
+<dl class="py data">
+<dt class="sig sig-object py" id="comparison.SCALING_EGO_NODES">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">SCALING_EGO_NODES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[3980,</span> <span class="pre">698,</span> <span class="pre">414,</span> <span class="pre">0,</span> <span class="pre">348]</span></span><a class="headerlink" href="#comparison.SCALING_EGO_NODES" title="Link to this definition">¶</a></dt>
+<dd><p>Facebook ego networks used for the runtime-scaling test, smallest first.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="comparison.PALETTE">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">PALETTE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['#2a78b5',</span> <span class="pre">'#e07b39',</span> <span class="pre">'#3a9e5b',</span> <span class="pre">'#c8463e',</span> <span class="pre">'#8a63b8',</span> <span class="pre">'#8c5a46',</span> <span class="pre">'#d672b8',</span> <span class="pre">'#7f7f7f',</span> <span class="pre">'#b5b532',</span> <span class="pre">'#2bb0c2',</span> <span class="pre">'#9cc5e6',</span> <span class="pre">'#f4b77e']</span></span><a class="headerlink" href="#comparison.PALETTE" title="Link to this definition">¶</a></dt>
+<dd><p>Colors for the largest communities; smaller ones reuse them in order.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="comparison.SINGLETON_COLOR">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">SINGLETON_COLOR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'#cfd4d9'</span></span><a class="headerlink" href="#comparison.SINGLETON_COLOR" title="Link to this definition">¶</a></dt>
+<dd><p>Color for communities with a single node.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.run_louvain">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">run_louvain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.run_louvain" title="Link to this definition">¶</a></dt>
+<dd><p>Run the Louvain method from the <code class="docutils literal notranslate"><span class="pre">python-louvain</span></code> library.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – Undirected graph. Edge weights are ignored (every edge counts as 1),
+to match Girvan–Newman.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed, because Louvain visits nodes in random order.
+Defaults to 42.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>communities</strong> (<em>list of set</em>) – The communities found, largest first.</p></li>
+<li><p><strong>runtime</strong> (<em>float</em>) – Wall-clock time in seconds.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.majority_accuracy">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">majority_accuracy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">communities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truth</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.majority_accuracy" title="Link to this definition">¶</a></dt>
+<dd><p>Score a partition against known group labels.</p>
+<p>Each detected community is labeled with the most common true group
+among its members. Accuracy is the fraction of nodes whose community
+label matches their true group.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>communities</strong> (<em>list</em><em> of </em><em>set</em>) – The detected communities.</p></li>
+<li><p><strong>truth</strong> (<em>dict</em>) – Maps each node to its true group label.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>accuracy</strong> (<em>float</em>) – Fraction of nodes labeled correctly, from 0 to 1.</p></li>
+<li><p><strong>wrong</strong> (<em>list</em>) – The nodes that were labeled incorrectly.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.analyze">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.analyze" title="Link to this definition">¶</a></dt>
+<dd><p>Run both algorithms on one graph and collect the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The graph to analyze.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Display name of the dataset.</p></li>
+<li><p><strong>progress</strong> (<em>bool</em><em>, </em><em>optional</em>) – Print Girvan–Newman’s progress. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Keys <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">graph</span></code>, <code class="docutils literal notranslate"><span class="pre">gn</span></code> (a
+<a class="reference internal" href="#girvan_newman.GirvanNewmanResult" title="girvan_newman.GirvanNewmanResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">girvan_newman.GirvanNewmanResult</span></code></a>), <code class="docutils literal notranslate"><span class="pre">louvain</span></code> (list of
+sets), <code class="docutils literal notranslate"><span class="pre">louvain_q</span></code> and <code class="docutils literal notranslate"><span class="pre">louvain_time</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.results_table">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">results_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.results_table" title="Link to this definition">¶</a></dt>
+<dd><p>Build the comparison table printed to the console.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>results</strong> (<em>list</em><em> of </em><em>dict</em>) – Results from <a class="reference internal" href="#comparison.analyze" title="comparison.analyze"><code class="xref py py-func docutils literal notranslate"><span class="pre">analyze()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One row per dataset with node and edge counts, communities,
+modularity and runtime for each algorithm, and the first three
+bridge edges Girvan–Newman removed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.community_colors">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">community_colors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">communities</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.community_colors" title="Link to this definition">¶</a></dt>
+<dd><p>Give every node the color of its community.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The graph being drawn.</p></li>
+<li><p><strong>communities</strong> (<em>list</em><em> of </em><em>set</em>) – The communities, largest first.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One color per node, in <code class="docutils literal notranslate"><span class="pre">graph.nodes()</span></code> order.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.draw_communities">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">draw_communities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">communities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.draw_communities" title="Link to this definition">¶</a></dt>
+<dd><p>Draw a graph with nodes colored by community.</p>
+<p>Edges inside a community are drawn darker than edges between
+communities, so the structure is easy to see.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The graph to draw.</p></li>
+<li><p><strong>communities</strong> (<em>list</em><em> of </em><em>set</em>) – The communities to color.</p></li>
+<li><p><strong>pos</strong> (<em>dict</em>) – Node positions, shared with the other panels of the figure.</p></li>
+<li><p><strong>ax</strong> (<em>matplotlib.axes.Axes</em>) – The axes to draw on.</p></li>
+<li><p><strong>title</strong> (<em>str</em>) – Panel title.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.plot_community_comparison">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">plot_community_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.plot_community_comparison" title="Link to this definition">¶</a></dt>
+<dd><p>Save the raw graph, Girvan–Newman and Louvain results side by side.</p>
+<p>All three panels use the same node positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>result</strong> (<em>dict</em>) – One result from <a class="reference internal" href="#comparison.analyze" title="comparison.analyze"><code class="xref py py-func docutils literal notranslate"><span class="pre">analyze()</span></code></a>.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – File path for the PNG image.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for the spring layout. Defaults to 42.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The path the image was saved to.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.plot_modularity_curves">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">plot_modularity_curves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.plot_modularity_curves" title="Link to this definition">¶</a></dt>
+<dd><p>Plot modularity against the number of edges Girvan–Newman removed.</p>
+<p>The peak of each curve (the partition Girvan–Newman returns) is marked,
+and Louvain’s modularity is drawn as a dashed line for comparison.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>results</strong> (<em>list</em><em> of </em><em>dict</em>) – Results from <a class="reference internal" href="#comparison.analyze" title="comparison.analyze"><code class="xref py py-func docutils literal notranslate"><span class="pre">analyze()</span></code></a>.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – File path for the PNG image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The path the image was saved to.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.plot_runtime_scaling">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">plot_runtime_scaling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.plot_runtime_scaling" title="Link to this definition">¶</a></dt>
+<dd><p>Plot runtime against graph size for both algorithms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scaling</strong> (<em>pandas.DataFrame</em>) – Columns <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">Edges</span></code>, <code class="docutils literal notranslate"><span class="pre">GN</span> <span class="pre">time</span> <span class="pre">(s)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Louvain</span> <span class="pre">time</span> <span class="pre">(s)</span></code>, as built by <a class="reference internal" href="#comparison.run_scaling_test" title="comparison.run_scaling_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_scaling_test()</span></code></a>.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – File path for the PNG image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The path the image was saved to.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.plot_karate_accuracy">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">plot_karate_accuracy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">communities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrong</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.plot_karate_accuracy" title="Link to this definition">¶</a></dt>
+<dd><p>Draw a two-community Karate split, circling misclassified members.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>networkx.Graph</em>) – The Karate Club graph.</p></li>
+<li><p><strong>communities</strong> (<em>list</em><em> of </em><em>set</em>) – The two detected communities.</p></li>
+<li><p><strong>wrong</strong> (<em>list</em>) – Nodes placed with the wrong club.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – File path for the PNG image.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for the spring layout. Defaults to 42.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The path the image was saved to.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.run_scaling_test">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">run_scaling_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ego_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[3980,</span> <span class="pre">698,</span> <span class="pre">414,</span> <span class="pre">0,</span> <span class="pre">348]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.run_scaling_test" title="Link to this definition">¶</a></dt>
+<dd><p>Time both algorithms on Facebook ego networks of different sizes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ego_nodes</strong> (<em>list</em><em> of </em><em>int</em><em>, </em><em>optional</em>) – Ego nodes to test. Defaults to <a class="reference internal" href="#comparison.SCALING_EGO_NODES" title="comparison.SCALING_EGO_NODES"><code class="xref py py-data docutils literal notranslate"><span class="pre">SCALING_EGO_NODES</span></code></a>.</p></li>
+<li><p><strong>extra_results</strong> (<em>iterable</em><em> of </em><em>dict</em><em>, </em><em>optional</em>) – Results already computed with <a class="reference internal" href="#comparison.analyze" title="comparison.analyze"><code class="xref py py-func docutils literal notranslate"><span class="pre">analyze()</span></code></a> to reuse instead
+of running again (and to add the Karate and Dolphin points).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One row per graph with <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">Nodes</span></code>, <code class="docutils literal notranslate"><span class="pre">Edges</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GN</span> <span class="pre">time</span> <span class="pre">(s)</span></code> and <code class="docutils literal notranslate"><span class="pre">Louvain</span> <span class="pre">time</span> <span class="pre">(s)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.slug">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">slug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#comparison.slug" title="Link to this definition">¶</a></dt>
+<dd><p>Turn a dataset name into a file-name-friendly string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – Dataset name, such as <code class="docutils literal notranslate"><span class="pre">&quot;Facebook</span> <span class="pre">(ego</span> <span class="pre">414)&quot;</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Lower-case name with only letters, digits and underscores, such as
+<code class="docutils literal notranslate"><span class="pre">&quot;facebook_ego_414&quot;</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comparison.main">
+<span class="sig-prename descclassname"><span class="pre">comparison.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#comparison.main" title="Link to this definition">¶</a></dt>
+<dd><p>Run the full comparison and save every table and image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&quot;results&quot;</span></code> (table from <a class="reference internal" href="#comparison.results_table" title="comparison.results_table"><code class="xref py py-func docutils literal notranslate"><span class="pre">results_table()</span></code></a>), <code class="docutils literal notranslate"><span class="pre">&quot;scaling&quot;</span></code>
+(table from <a class="reference internal" href="#comparison.run_scaling_test" title="comparison.run_scaling_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_scaling_test()</span></code></a>) and <code class="docutils literal notranslate"><span class="pre">&quot;karate_accuracy&quot;</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-main">
+<span id="entry-point"></span><h2>Entry point<a class="headerlink" href="#module-main" title="Link to this heading">¶</a></h2>
+<p>Run the whole project: dataset summary, raw graphs and the full comparison.</p>
+<p>Run from the repository root:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="main.main">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#main.main" title="Link to this definition">¶</a></dt>
+<dd><p>Print the dataset summary, then run and save the full comparison.</p>
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Community Detection Visualizer</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Kyriacos Savva.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
