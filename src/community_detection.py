@@ -90,12 +90,19 @@ def load_karate_club():
     real split is the ground truth used later to measure how accurate
     the detected communities are.
 
+    NetworkX stores a ``weight`` on each edge (how many activities two
+    members shared). The weights are removed so that every dataset is
+    treated as unweighted, the same way Girvan–Newman treats it.
+
     Returns
     -------
     networkx.Graph
-        Undirected graph with 34 nodes and 78 edges.
+        Unweighted undirected graph with 34 nodes and 78 edges.
     """
-    return nx.karate_club_graph()
+    graph = nx.karate_club_graph()
+    for _, _, data in graph.edges(data=True):
+        data.pop("weight", None)
+    return graph
 
 
 def load_dolphins(data_dir=DATA_DIR):
